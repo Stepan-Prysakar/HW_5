@@ -25,11 +25,11 @@ class Phone(Field):
 # Клас для зберігання дати народження з валідацією.
 class Birthday(Field):
     def __init__(self, value):
+        self.value = value
         try:
-            value = datetime.strptime(value, '%d.%m.%Y')
+            self.value = datetime.strptime(value, '%d.%m.%Y').date()
         except Exception:
             raise Exception("Invalid date format. Use DD.MM.YYYY")
-        super().__init__(value.date())
 
 # Клас для зберігання інформації про контакт та методами маніпуляції з нею.
 class Record:
@@ -110,10 +110,14 @@ class AddressBook(UserDict):
                 birthday_this_year = self.adjust_for_weekend(birthday_this_year)
                 congratulation_date_str = self.date_to_string(birthday_this_year)
                 upcoming_birthdays.append({"Name": user["name"].capitalize(), "Congratulation date": congratulation_date_str})
-        return upcoming_birthdays
-        
-    def __str__(self):    # реалізація user-friendly виводу      
-        return "\n".join(str(r) for r in self.data.values())           
+        if upcoming_birthdays:
+            return upcoming_birthdays
+        else:
+            raise Exception('No contacts to greet.')
+
+    
+    def __str__(self):  # реалізація user-friendly виводу
+            return "\n".join(str(r) for r in self.data.values())
 
 # Декоратор для обробки помилок введення
 def input_error(func):
@@ -122,13 +126,16 @@ def input_error(func):
             return func(*args, **kwargs)
         except ValueError:
             return 'Invalid input data.'
+        except AttributeError:
+            return 'There is no such contact.'
+        except TypeError:
+            return 'TypeError'
         except Exception as error:
             return error
-        except AttributeError:
-            return 'Invalid input data.'
     return inner
 
 # Парсер команд
+@input_error
 def parse_input(user_input):
     cmd, *args = user_input.split()
     cmd = cmd.strip().lower()
@@ -152,8 +159,6 @@ def add_contact(args, book: AddressBook):
 def change_contact(args, book: AddressBook):
     name, phone, new_phone, *_ = args
     record = book.find(name)
-    if record is None:
-        raise Exception('There is no such contact.')
     record.edit_phone(phone, new_phone)
     return 'Contact updated.'
 
@@ -161,8 +166,6 @@ def change_contact(args, book: AddressBook):
 def show_phone(args, book: AddressBook):
     name, *_ = args
     record = book.find(name)
-    if record is None:
-        raise Exception('There is no such contact.')
     return f"{name.capitalize()}'s phones: {record.phones}"
 
 def show_all(book: AddressBook):
@@ -172,8 +175,6 @@ def show_all(book: AddressBook):
 def add_birthday(args, book):
     name, birthday, *_ = args
     record = book.find(name)
-    if record is None:
-        raise Exception('There is no such contact.')
     record.add_birthday(birthday)
     return 'Birthday added.'
 
@@ -181,13 +182,12 @@ def add_birthday(args, book):
 def show_birthday(args, book):
     name, *_ = args
     record = book.find(name)
-    if record is None:
-        raise Exception('There is no such contact.')
     return f"{name.capitalize()}'s birthday - {record.birthday}"
 
 @input_error
 def birthdays(book):
     return book.get_upcoming_birthdays()
+
 
 # Цикл взаємодії з користувачем
 def main():
@@ -222,7 +222,8 @@ def main():
             print(show_birthday(args, book))
 
         elif command == "birthdays":
-            print(*birthdays(book), sep='\n')
+            print(birthdays(book))
+
             
         elif command in ['close', 'exit']:
             print('Good bye!')
