@@ -25,11 +25,11 @@ class Phone(Field):
 # Клас для зберігання дати народження з валідацією.
 class Birthday(Field):
     def __init__(self, value):
-        self.value = value
         try:
-            self.value = datetime.strptime(value, '%d.%m.%Y').date()
+            value = datetime.strptime(value, '%d.%m.%Y').date()
         except Exception:
             raise Exception("Invalid date format. Use DD.MM.YYYY")
+        self.value = value.strftime("%d.%m.%Y")
 
 # Клас для зберігання інформації про контакт та методами маніпуляції з нею.
 class Record:
@@ -95,8 +95,11 @@ class AddressBook(UserDict):
         for i in self.data.values():
             user = {}
             user['name'] = i.name.value
-            user['birthday'] = i.birthday.value
-            users.append(user)
+            try:
+                user['birthday'] = datetime.strptime(i.birthday.value, '%d.%m.%Y').date()
+                users.append(user)
+            except:
+                pass
 
         for user in users:
             birthday_this_year = user["birthday"].replace(year=today.year)
@@ -127,7 +130,7 @@ def input_error(func):
         except ValueError:
             return 'Invalid input data.'
         except AttributeError:
-            return 'There is no such contact.'
+           return 'There is no such contact.'
         except TypeError:
             return 'TypeError'
         except Exception as error:
